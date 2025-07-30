@@ -1,19 +1,23 @@
-import { Chessboard, type PieceDropHandlerArgs } from "react-chessboard";
-import { useRef, useState, useEffect } from "react";
-import { Chess } from "chess.js";
+import React, { useRef, useState } from "react";
+import {
+  Chessboard,
+  type SquareHandlerArgs,
+  type PieceDropHandlerArgs,
+  type ChessboardOptions,
+} from "react-chessboard";
+import { Chess, type Square } from "chess.js";
+
 const App = () => {
-  const chessGameRef = useRef(new Chess());
-  const chessGame = chessGameRef.current;
+  const chessRef = useRef(new Chess());
+  const chessGame = chessRef.current;
 
   const [chessPosition, setChessPosition] = useState(chessGame.fen());
-  const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-  /**
-   * fen= Forsyth-Edwards Notation은 체스 기물 배치 상태와 현재 게임 상태를 문자열로
-   * 압축해서 나타내는 포맷
-   * 6개의 필드로 구성
-   *
-   */
-  const makeRandomMoves = () => {
+  const [moveFrom, setMoveFrom] = useState<string>("");
+  const [optionSquares, setOptionSquares] = useState({});
+  // const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // CPU 랜덤 이동
+  const makeRandomMove = () => {
     const possibleMoves = chessGame.moves();
 
     if (chessGame.isGameOver()) {
@@ -22,8 +26,85 @@ const App = () => {
 
     const randomMove =
       possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
+
     chessGame.move(randomMove);
     setChessPosition(chessGame.fen());
+  };
+
+  const getMoveOptions = (square: Square) => {
+    const moves = chessGame.moves({
+      square,
+      verbose: true,
+    });
+
+    if (moves.length === 0) {
+      setOptionSquares({});
+      return false;
+    }
+
+    const newSquares: Record<string, React.CSSProperties> = {};
+
+    for (const move of moves) {
+      newSquares[move.to] = {
+        background:
+          chessGame.get(move.to) &&
+          chessGame.get(move.to)?.color !== chessGame.get(square)?.color
+            ? "radial-gradient(circle,rgba(0,0,0,.1) 85%,transparent 85%)"
+            : "radial-gradient(circle, rgba(0,0,0,.1) 25%, transparent 25%)",
+        borderRadius: "50%",
+      };
+    }
+
+    newSquares[square] = {
+      background: "rgba(255,255,0,0.4);",
+    };
+
+    setOptionSquares(newSquares);
+    return true;
+  };
+
+  const onSquareClick = ({ square, piece }: SquareHandlerArgs) => {
+    if (!moveFrom && piece) {
+      const hasMoveOptions = getMoveOptions(square as Square);
+
+      if (hasMoveOptions) {
+        setMoveFrom(square);
+      }
+      return;
+    }
+    const moves = chessGame.moves({
+      square: moveFrom as Square,
+      verbose: true,
+    });
+    const foundMove = moves.find((m) => m.from === moveFrom && m.to === square);
+
+    if (!foundMove) {
+      const hasMoveOptions = getMoveOptions(square as Square);
+
+      setMoveFrom(hasMoveOptions ? square : "");
+      return;
+    }
+
+    try {
+      chessGame.move({
+        from: moveFrom,
+        to: square,
+        promotion: "q",
+      });
+    } catch {
+      const hasMoveOptions = getMoveOptions(square as Square);
+
+      if (hasMoveOptions) {
+        setMoveFrom(square);
+      }
+      return;
+    }
+
+    setChessPosition(chessGame.fen());
+    setTimeout(makeRandomMove, 300);
+
+    setMoveFrom("");
+    setOptionSquares({});
   };
 
   const onPieceDrop = ({
@@ -38,53 +119,47 @@ const App = () => {
       chessGame.move({
         from: sourceSquare,
         to: targetSquare,
-        promotion: "q", // 항상 queen으로 지정해서 승급할 것,나중에 q,r,k,b에서 선택할 수 있도록하기
+        promotion: "q",
       });
+
       setChessPosition(chessGame.fen());
-      // 기존 타이머가 있으면 제거
-      if (moveTimeoutRef.current) {
-        clearTimeout(moveTimeoutRef.current);
-      }
-      // 게임이 끝나지 않았을 때만 AI의 랜덤 move 예약
-      if (!chessGame.isGameOver()) {
-        moveTimeoutRef.current = setTimeout(makeRandomMoves, 500);
-      }
+
+      setMoveFrom("");
+      setOptionSquares({});
+
+      setTimeout(makeRandomMove, 500);
+
       return true;
     } catch {
       return false;
     }
   };
 
-  const chessboardOptions = {
-    position: chessPosition,
+  const chessboardOptions: ChessboardOptions = {
     onPieceDrop,
-    id: "play-vs-random",
+    onSquareClick,
+    position: chessPosition,
+    squareStyles: optionSquares,
+    id: "click-or-drag-to-move",
   };
-  // 언마운트 시 타이머 제거
-  useEffect(() => {
-    return () => {
-      if (moveTimeoutRef.current) {
-        clearTimeout(moveTimeoutRef.current);
-      }
-    };
-  }, []);
 
   return (
-    <main className="flex items-center flex-row justify-center overflow-hidden h-screen w-screen ">
-      <section className="flex flex-1 items-center justify-center">
-        <h1 className=" border-white border tracking-widest font-extrabold italic text-[48px] [text-shadow:0_2px_0_white,2px_0_0_white,0_-2px_0_white,-2px_0_0_white] text-black">
+    <main className="flex items-center justify-center h-screen w-screen">
+      <section className="flex-1 flex items-center justify-center">
+        <h1 className="text-[48px] font-extrabold italic tracking-widest text-black border border-white [text-shadow:0_2px_0_white,2px_0_0_white,0_-2px_0_white,-2px_0_0_white]">
           Creibis Chess
         </h1>
       </section>
-      <section className="flex flex-1 items-center justify-center ">
+      <section className="flex-1 flex items-center justify-center">
         <div className="w-full max-w-[640px] aspect-square">
           <Chessboard options={chessboardOptions} />
         </div>
       </section>
-      <section className="flex flex-1 items-center justify-center">
+      <section className="flex-1 flex items-center justify-center">
         Another Info
       </section>
     </main>
   );
 };
+
 export default App;
