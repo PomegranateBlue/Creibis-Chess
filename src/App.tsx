@@ -1,11 +1,12 @@
 import { Chessboard, type PieceDropHandlerArgs } from "react-chessboard";
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { Chess } from "chess.js";
 const App = () => {
   const chessGameRef = useRef(new Chess());
   const chessGame = chessGameRef.current;
 
   const [chessPosition, setChessPosition] = useState(chessGame.fen());
+  const moveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   /**
    * fen= Forsyth-Edwards Notation은 체스 기물 배치 상태와 현재 게임 상태를 문자열로
    * 압축해서 나타내는 포맷
@@ -19,9 +20,9 @@ const App = () => {
       return;
     }
 
-    const randomMoves =
+    const randomMove =
       possibleMoves[Math.floor(Math.random() * possibleMoves.length)];
-    chessGame.move(randomMoves);
+    chessGame.move(randomMove);
     setChessPosition(chessGame.fen());
   };
 
@@ -40,7 +41,14 @@ const App = () => {
         promotion: "q", // 항상 queen으로 지정해서 승급할 것,나중에 q,r,k,b에서 선택할 수 있도록하기
       });
       setChessPosition(chessGame.fen());
-      setTimeout(makeRandomMoves, 500);
+      // 기존 타이머가 있으면 제거
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current);
+      }
+      // 게임이 끝나지 않았을 때만 AI의 랜덤 move 예약
+      if (!chessGame.isGameOver()) {
+        moveTimeoutRef.current = setTimeout(makeRandomMoves, 500);
+      }
       return true;
     } catch {
       return false;
@@ -52,6 +60,15 @@ const App = () => {
     onPieceDrop,
     id: "play-vs-random",
   };
+  // 언마운트 시 타이머 제거
+  useEffect(() => {
+    return () => {
+      if (moveTimeoutRef.current) {
+        clearTimeout(moveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   return (
     <main className="flex items-center flex-row justify-center overflow-hidden h-screen w-screen ">
       <section className="flex flex-1 items-center justify-center">
