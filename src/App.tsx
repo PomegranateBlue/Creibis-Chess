@@ -56,7 +56,7 @@ const App = () => {
     }
 
     newSquares[square] = {
-      background: "rgba(255,255,0,0.4);",
+      background: "rgba(255,255,0,0.4)",
     };
 
     setOptionSquares(newSquares);
