@@ -1,29 +1,29 @@
-import { type PieceDropHandlerArgs } from "react-chessboard";
+// import { type PieceDropHandlerArgs } from "react-chessboard";
 
-export const onPieceDrop = ({
-  sourceSquare,
-  targetSquare,
-}: PieceDropHandlerArgs) => {
-  if (!targetSquare) {
-    return false;
-  }
+// export const onPieceDrop = ({
+//   sourceSquare,
+//   targetSquare,
+// }: PieceDropHandlerArgs) => {
+//   if (!targetSquare) {
+//     return false;
+//   }
 
-  try {
-    chessGame.move({
-      from: sourceSquare,
-      to: targetSquare,
-      promotion: "q",
-    });
+//   try {
+//     chessGame.move({
+//       from: sourceSquare,
+//       to: targetSquare,
+//       promotion: "q",
+//     });
 
-    setChessPosition(chessGame.fen());
+//     setChessPosition(chessGame.fen());
 
-    setMoveFrom("");
-    setOptionSquares({});
+//     setMoveFrom("");
+//     setOptionSquares({});
 
-    setTimeout(makeRandomMove, 500);
+//     setTimeout(makeRandomMove, 500);
 
-    return true;
-  } catch {
-    return false;
-  }
-};
+//     return true;
+//   } catch {
+//     return false;
+//   }
+// };
